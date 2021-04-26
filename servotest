@@ -11,8 +11,8 @@ void setup() {
 }
 
 void loop() {
-  val = analogRead(A0);
-  int servoval = map(val, 0, 1023, 0, 180);
-  myservo.write(servoval);
-  Serial.println(servoval);
+  //val = analogRead(A0);
+  //int servoval = map(val, 0, 1023, 0, 180);
+  myservo.write(90);
+  //Serial.println(servoval);
 }
