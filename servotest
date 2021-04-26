@@ -1,15 +1,18 @@
 #include <Servo.h>
 
+#include <Wire.h>
+
 Servo myservo;
 int val = 0;
 
 void setup() {
   myservo.attach(3);  
-  
+  Serial.begin(115200);
 }
 
 void loop() {
   val = analogRead(A0);
   int servoval = map(val, 0, 1023, 0, 180);
   myservo.write(servoval);
+  Serial.println(servoval);
 }
