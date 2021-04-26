@@ -1,17 +1,15 @@
 #include <Servo.h>
 
 Servo myservo;
+int val = 0;
 
 void setup() {
   myservo.attach(3);  
-
+  
 }
 
 void loop() {
-    myservo.write(40);
-  delay(1000);
-  myservo.write(110);
-  delay(1000);
-  myservo.write(90);
-  delay(1000);
+  val = analogRead(A0);
+  int servoval = map(val, 0, 1023, 0, 180);
+  myservo.write(servoval);
 }
