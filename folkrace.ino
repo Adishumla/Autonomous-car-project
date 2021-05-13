@@ -71,10 +71,10 @@ void loop() {
   steering.write(90);
   ESC.write(120);
 	if (distance[0] < distance[2]) {				// distance[0] är vänster sensor, distance[2] är höger
-		steering.write(120);
+		steering.write(120);	// 120 = max höger
 	}
 	if (distance[0] > distance[2]) {
-		steering.write(90);
+		steering.write(60);	// 60 = max vänster
 	}
 
 }
