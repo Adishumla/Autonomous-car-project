@@ -93,5 +93,13 @@ void loop() {
   }
   
   }
+  
+  distance1 = getDistances();  // tänker att distance1/2 inte behöver liga i en if sats.
+  delay(200);                  // väntar 2 sek 
+  distance2 = getDistances(); 
+  if(distance1 = distance2)    // om distance1 = distance2 
+  {
+  ESC.write(70)                // backa bilen 
+  }
 */
 }
