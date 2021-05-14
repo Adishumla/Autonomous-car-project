@@ -81,5 +81,17 @@ void loop() {
      delay(200)
      ESC.write(70);
   }
-
+  /* exempel
+  if (distances[1]) 
+  {
+  distanceOne = getDistances(); //  sparar en distans
+  delay(200);                   //  Väntar 2 sek
+  distanceTwo = getDistance();  //   sparar en till distans
+  if(distanceOne = distanceTwo) //  om båda distanserna är lika stora 
+  {
+    ESC.write(70);              // backa, 89 - 0 är back så 70 kan vara för fort  
+  }
+  
+  }
+*/
 }
