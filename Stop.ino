@@ -61,7 +61,7 @@ void getDistance() {
 
 void valueDistance() {
   value[1] = distances[1];
-  delay(100);
+  delay(50);
   value[2] = distances[1];
 }
 
