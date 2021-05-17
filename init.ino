@@ -4,7 +4,7 @@
 
 
 #define MUX_ADDRESS 0x70     // i2c-adressen till multiplexern
-#define NUMBER_OF_SENSORS 5
+#define NUMBER_OF_SENSORS 3
 #define SERVO_PIN 5
 #define ESC_PIN 5
 
@@ -32,10 +32,10 @@ void i2cSelect(uint8_t bus) {
 // Funktionen lidarSetup initerar alla ToF-sensorer
 // Argumentet sensors anger hur många sensorer som är anslutna
 // I for-loopen väljs först aktuell i2c-bus, därefter initeras sensorn.
- void lidarSetup(uint8_t sensors) {
+void lidarSetup() {
   Wire.setClock(400000);  // Sätter i2c-klockan till 400kHz
   
-  for (uint8_t i=0; i < sensors; i++) {
+  for (uint8_t i=3; i < (NUMBER_OF_SENSORS + 3); i++) {
     i2cSelect(i);
     
     if (!lidar.init()) {
@@ -50,18 +50,26 @@ void i2cSelect(uint8_t bus) {
 
 // funktionen getDistance() lagrar sensorvärden i den globala arrayen distances;
 void getDistance() {
-  for (uint8_t i=0; i < NUMBER_OF_SENSORS; i++) {
+  for (uint8_t i=3; i < (NUMBER_OF_SENSORS + 3); i++) {
     i2cSelect(i);
     distances[i] = lidar.read();
   }
 }
-
+void initESC() {
+	ESC.write(90);
+	delay(2000);
+	ESC.write(180);
+	delay(2000);
+	ESC.write(90);
+	delay(1000);
+}
 
 
 void setup() {
   steering.attach(SERVO_PIN);     // Initierar servo
   ESC.attach(ESC_PIN);            // Initierar ESC
-  lidarSetup(NUMBER_OF_SENSORS);  // Initierar lidar-sensorer
+  lidarSetup();  // Initierar lidar-sensorer
+  initESC();
 }
 
 void loop() {
