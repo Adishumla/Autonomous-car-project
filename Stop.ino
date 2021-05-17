@@ -14,6 +14,8 @@
 Servo steering;
 Servo ESC;
 VL53L1X lidar;
+VL53L1X sensor;
+
 
 uint16_t throttle;        // 0 - 89: back. 90 stillastående. 91 - 180: fram.
 uint16_t steering_angle;  // 90 = rakt fram; 120 = max höger; 60 = max vänster;
@@ -31,6 +33,12 @@ void i2cSelect(uint8_t bus) {
   Wire.endTransmission();
   
  }
+
+
+
+
+
+
 
 // Funktionen lidarSetup initerar alla ToF-sensorer
 // Argumentet sensors anger hur många sensorer som är anslutna
@@ -52,12 +60,6 @@ void i2cSelect(uint8_t bus) {
 }
 
 // funktionen getDistance() lagrar sensorvärden i den globala arrayen distances;
-void getDistance() {
-  for (uint8_t i=0; i < NUMBER_OF_SENSORS; i++) {
-    i2cSelect((i+2));
-    distances[i] = lidar.read();
-  }
-}
 
 void valueDistance() {
   value[1] = distances[1];
@@ -72,6 +74,7 @@ void setup() {
   delay(1000);
   lidarSetup(NUMBER_OF_SENSORS);  // Initierar lidar-sensorer
 }
+
 void getDistance() {
   for (uint8_t i=0; i < NUMBER_OF_SENSORS; i++) {
     i2cSelect(i);
