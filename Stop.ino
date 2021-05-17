@@ -85,9 +85,10 @@ void loop() {
     steering.write(distances[0] - distances[2] * 2 + 90); // Max vänster Ex. 23 - 30 * 3 + 90 = -111
   }*/
   if (value[1] = value[2]){
-    ESC.write(0);
+    ESC.write(90);
     delay(50);
-    ESC.write(50);
+    ESC.write(80);
+    delay(50);
   }
   /*if (distances[1] <= 50 && distances[2] = <=50){
     steering.write(110);
