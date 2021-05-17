@@ -14,7 +14,7 @@ Servo ESC;
 VL53L1X lidar;
 
 uint16_t throttle;        // 0 - 89: back. 90 stillastående. 91 - 180: fram.
-uint16_t steering_angle;  // 0 - 180: 90 = rakt fram; (Obs, kanske fel värden!)
+uint16_t steering_angle;   // 90 = rakt fram; 120 = max höger; 60 = max vänster;
 bool error = false;
 uint16_t distances[NUMBER_OF_SENSORS];  // array för att lagra sensorvärden
 float speed;			// Faktor för att reglera hastigheten;
