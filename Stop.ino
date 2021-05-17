@@ -72,6 +72,17 @@ void setup() {
   delay(1000);
   lidarSetup(NUMBER_OF_SENSORS);  // Initierar lidar-sensorer
 }
+void getDistance() {
+  for (uint8_t i=0; i < NUMBER_OF_SENSORS; i++) {
+    i2cSelect(i);
+    Serial.print("Sensor ");
+    Serial.print(i);
+    Serial.print(":\t");
+    Serial.print(sensor.read());
+    Serial.print("\t\t");
+  }
+  Serial.println("\n");
+}
 
 void loop() {
   getDistance();
