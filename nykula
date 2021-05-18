@@ -1,0 +1,155 @@
+#include <Servo.h>
+#include <Wire.h>
+#include <VL53L1X.h>
+
+
+#define MUX_ADDRESS 0x70     // i2c-adressen till multiplexern
+#define NUMBER_OF_SENSORS 3
+#define SERVO_PIN 9
+//#define MOTOR_PIN 5
+
+int enA = 5;
+int in1 = 6;
+int in2 = 3;
+
+Servo steering;
+
+VL53L1X lidar;
+
+uint16_t throttle;        // 0 - 89: back. 90 stillastående. 91 - 180: fram.
+uint16_t steering_angle;  // 0 - 180: 90 = rakt fram; (Obs, kanske fel värden!)
+bool error = false;
+uint16_t distances[NUMBER_OF_SENSORS];  // array för att lagra sensorvärden
+float speed;      // Faktor för att reglera hastigheten;
+
+
+// Multiplexern har 8 i2c-anslutningar, för att välja vilken som skall användas skrivs en etta till motsvarande bit 
+// Exempelvis: 0b00010000 innebär att anslutning 4 används
+void i2cSelect(uint8_t bus) {
+  Wire.beginTransmission(MUX_ADDRESS);
+  Wire.write(1 << bus);
+  Wire.endTransmission();
+  
+ }
+
+// Funktionen lidarSetup initerar alla ToF-sensorer
+// Argumentet sensors anger hur många sensorer som är anslutna
+// I for-loopen väljs först aktuell i2c-bus, därefter initeras sensorn.
+void lidarSetup() {
+  Wire.setClock(400000);  // Sätter i2c-klockan till 400kHz
+  
+  for (uint8_t i=3; i < (NUMBER_OF_SENSORS + 3); i++) {
+    i2cSelect(i);
+    
+    if (!lidar.init()) {
+      error = true;
+      Serial.print("Failed to initalise sensor");
+      Serial.println(i);
+    }
+    lidar.setDistanceMode(VL53L1X::Long);
+    lidar.setMeasurementTimingBudget(20000);
+    lidar.startContinuous(20);
+  }
+  
+}
+
+// funktionen getDistance() lagrar sensorvärden i den globala arrayen distances;
+void getDistance() {
+  for (uint8_t i=3; i < (NUMBER_OF_SENSORS + 3); i++) {
+    i2cSelect(i);
+    distances[i] = lidar.read();
+  }
+}
+
+
+
+void setup() {
+  Serial.begin(115200);
+ 
+  steering.attach(SERVO_PIN);     // Initierar servo
+  
+  lidarSetup();                   // Initierar lidar-sensorer
+  pinMode(enA, OUTPUT);
+  pinMode(in1, OUTPUT);
+  pinMode(in2, OUTPUT);
+
+ digitalWrite(in1, LOW);
+ digitalWrite(in2, LOW);
+}
+
+void loop() {
+ // getDistance();
+  //i2cSelect(3);
+  //Serial.print("Sensor 0: ");
+  //Serial.print(lidar.read());
+
+//  i2cSelect(4);
+ // Serial.print("mm\tSensor 1: ");
+ // Serial.print(lidar.read());
+ 
+ // i2cSelect(5);
+ // Serial.print("mm\tSensor 2: ");
+ // Serial.println(lidar.read());
+
+
+
+//steering.write(90);
+directionControl();
+  delay(1000);
+  speedControl();
+  delay(1000);
+
+
+}
+
+// This function lets you control spinning direction of motors
+void directionControl() {
+  // Set motors to maximum speed
+  // For PWM maximum possible values are 0 to 255
+  analogWrite(enA, 255);
+
+
+  // Turn on motor A & B
+  digitalWrite(in1, HIGH);
+  digitalWrite(in2, LOW);
+ 
+  delay(2000);
+  
+  // Now change motor directions
+  digitalWrite(in1, LOW);
+  digitalWrite(in2, HIGH);
+ 
+  delay(2000);
+  
+  // Turn off motors
+  digitalWrite(in1, LOW);
+  digitalWrite(in2, LOW);
+ 
+}
+
+// This function lets you control speed of the motors
+void speedControl() {
+  // Turn on motors
+  digitalWrite(in1, LOW);
+  digitalWrite(in2, HIGH);
+
+  
+  // Accelerate from zero to maximum speed
+  for (int i = 0; i < 256; i++) {
+    analogWrite(enA, i);
+  
+    delay(20);
+  }
+  
+  // Decelerate from maximum speed to zero
+  for (int i = 255; i >= 0; --i) {
+    analogWrite(enA, i);
+   
+    delay(20);
+  }
+  
+  // Now turn off motors
+  digitalWrite(in1, LOW);
+  digitalWrite(in2, LOW);
+
+}
