@@ -221,7 +221,7 @@ void reverse(int distForward)
 {
     word distRight = sensorL.read();
     word distLeft = sensorR.read();
-    while (distForward < 30000)
+    while (distForward < 300)
     {
       distForward = sensorF.read();
       speed = map (distForward, 0, 300, 130, 220);
