@@ -1,0 +1,269 @@
+
+/*********************** BIBLIOTEK ***********************/
+#include <Servo.h> // Bibliotek för servo
+#include <PID_v1.h> // Bibliotek för PID-styrning
+#include <VL53L1X.h> //Bibliotek för sensorerna
+#include <Arduino.h>
+#include <Wire.h> // Bibliotek för I2C
+
+/*********************KONSTANTER FÖR GYRO*******************/
+//const int MPU=0x68; 
+//int16_t GyX,GyY,GyZ;
+
+/********************* KONSTANTER FÖR PID *******************/
+double SetpointPID = 0, InputPID, OutputPID; // Konstanter för PID-styrningen
+double Kp = 0.07, Ki = 0.005, Kd = 0.0045; // Kp = 0.07, Ki = 0.005, Kd = 0.0045;
+
+/*********************** PINS ***********************/
+#define MOTORDIRECTION 12 //Pin för motors riktning 1 = fram 0 = back
+#define MOTORDIRECTION1 13 //Pin för motors riktning 1 = fram 0 = back
+#define MOTORSPEED 3 //Pin för att sätta hastighet 0-255
+#define SERVO 6 // Pin för servo
+#define SENSORLEFT 7 // Shut för vänster(vinklad) sensor
+#define SENSORRIGHT 2 // Shut för sensor höger (vinklad)
+#define SENSORFORWARD 4 //Shut för sensor rakt fram
+
+
+#define START 8 // Startmodul
+
+/******************* SENSORER ************************/
+VL53L1X sensorF; 
+VL53L1X sensorL;
+VL53L1X sensorR;
+//VL53L1X sensorL2;
+//VL53L1X sensorR2;
+
+/*********************** FUNKTIONER ***********************/
+void motorSet (byte speed, byte direction, byte direction1);
+//void setupGyro ();
+void setupSensors ();
+void setupPID();
+//byte readGyro ();
+void reverse(int distForward);
+void printPIDValues (int leftAng, int rightAng, int leftStr, int rightStr, int InputPID, int OutputPID);
+PID steerServoPID(&InputPID, &OutputPID, &SetpointPID, Kp, Ki, Kd, DIRECT);
+
+/*********************** VARIABLER ***********************/
+byte start = 0; // Logikvärde för startmodul
+int speed = 0; // PWM-hastighet 0-255
+byte climbing = 0; // Logikvärde, lutning eller ej
+byte climbspeed = 0; // Värde för extra push vidd backar
+int distForward; //Avstånd rakt fram
+int leftAng; //Avstånd sensor vänster (vinklad)
+int rightAng; //Avstånd sensor höger (vinklad)
+int leftStr; //Avstånd sensor vänster (rak)
+int rightStr; //Avstånd sensor höger (rak)
+int diff; // Differensvärde avstånd höger - vänster
+Servo servo;  //Skapar ett servo-objekt
+
+/*********************** HUVUDPROGRAM SETUP ***********************/
+void setup() {
+
+  Serial.begin (9600);
+  Serial.println (" Setup: ");
+  pinMode (MOTORDIRECTION, OUTPUT);
+  pinMode (MOTORDIRECTION1, OUTPUT);
+  Serial.println (" Setup: motor klar ");
+  servo.attach(SERVO);  // Sätter servo-utgång
+  Serial.println (" Setup: servo klar");
+  pinMode (START, INPUT);
+  Serial.println (" Setup: starter klar");
+  //setupGyro();
+  setupSensors();
+    Serial.println (" Setup: sensors klar");
+  setupPID();
+   Serial.println (" Setup: PID klar");
+} // void setup()
+
+/*********************** HUVUDPROGRAM LOOP ***********************/
+void loop() 
+{
+ 
+  start = digitalRead (START); 
+  /* START */
+  
+  while (start)
+  {
+  Serial.print (sensorL.read());
+  Serial.print("   -   ");
+  Serial.println (sensorF.read());
+  Serial.print("   -   ");
+  Serial.println (sensorR.read());
+  start = digitalRead(START);
+   Serial.println (sensorF.read());
+  int lastDist = distForward;
+  distForward = sensorF.read();
+  int diffFront = distForward - lastDist;
+  //climbspeed = readGyro();
+  if (distForward < 100 && (diffFront < 1 || diffFront > -1)) reverse(distForward);
+  
+  if (distForward > 1200) distForward = 500;
+  speed = map (distForward, 0, 500, 50, 200); //+ climbspeed;
+  
+  
+  //speed = speed + climbspeed;
+  if (speed > 255) speed = 255;
+  motorSet (speed, 1, 0); 
+  
+  leftAng = sensorR.read();
+  rightAng = sensorL.read();
+  //leftStr = sensorL2.read();/
+  //rightStr = sensorR2.read();
+  diff = (leftAng-rightAng)/10+90;//+(rightStr - leftStr);
+  InputPID = diff;
+  steerServoPID.Compute();
+  
+if(diff < 90 && diff > 50) { // sväng vänster
+ServoValue(diff); // ex. 90 + (-17,9) = 72,1
+}
+if(diff > 90 && diff < 130) { // sväng höger
+ServoValue(diff);
+}
+if(value > 130) {    // maxa höger
+ServoValue(130);
+}
+if(value < 50) {    // maxa vänster
+ServoValue(50);
+}
+else {    // annars kör rakt
+ServoValue(90);
+}
+  
+  //printPIDValues(leftAng, rightAng, leftStr, rightStr, InputPID, OutputPID);
+  //delay (1000);
+  servo.write (110+InputPID);
+  }
+  /* STOPP */
+  //Serial.println (" stopsta");
+  servo.write(110);
+  motorSet(0, 0, 0);
+} // void loop()
+
+void motorSet (byte speed, byte direction, byte direction1)
+{
+  digitalWrite(MOTORDIRECTION, direction); //LOW för att köra framåt, HIGH för att backa
+  digitalWrite(MOTORDIRECTION1, direction1); //LOW för att köra framåt, HIGH för att backa
+  analogWrite(MOTORSPEED, speed);   //Sätter hastighet på Channel A
+}
+
+void setupSensors ()
+{
+  pinMode(SENSORFORWARD, OUTPUT);
+  pinMode(SENSORLEFT, OUTPUT);
+  pinMode(SENSORRIGHT, OUTPUT); 
+  //pinMode(SENSORLEFT2, OUTPUT);
+  //pinMode(SENSORRIGHT2, OUTPUT);
+  
+  digitalWrite (SENSORFORWARD, LOW);
+  digitalWrite (SENSORLEFT, LOW);
+  digitalWrite (SENSORRIGHT, LOW);
+  //digitalWrite (SENSORLEFT2, LOW);
+  //digitalWrite (SENSORRIGHT2, LOW);
+  
+  pinMode(SENSORFORWARD, INPUT);
+  sensorF.init(true);
+  sensorF.setAddress((uint8_t)1);
+  
+  pinMode (SENSORLEFT, INPUT);
+  sensorL.init(true);
+  sensorL.setAddress((uint8_t)2);
+  
+  pinMode(SENSORRIGHT, INPUT);
+  sensorR.init(true);
+  sensorR.setAddress((uint8_t)3);
+  
+  //pinMode (SENSORLEFT2, INPUT);
+  //sensorL2.init(true);
+  //sensorL2.setAddress((uint8_t)4);
+  
+  //pinMode(SENSORRIGHT2, INPUT);
+  //sensorR2.init(true);
+  //sensorR2.setAddress((uint8_t)5);
+   
+  sensorF.setDistanceMode(VL53L1X::Long);
+  sensorF.setMeasurementTimingBudget(13);
+  sensorL.setDistanceMode(VL53L1X::Long);
+  sensorL.setMeasurementTimingBudget(13);
+  sensorR.setDistanceMode(VL53L1X::Long);
+  sensorR.setMeasurementTimingBudget(13);
+  //sensorL2.setDistanceMode(VL53L1X::Long);
+  //sensorL2.setMeasurementTimingBudget(33);
+  //sensorR2.setDistanceMode(VL53L1X::Long);
+  //sensorR2.setMeasurementTimingBudget(33);
+  
+  sensorF.startContinuous(10);
+  sensorL.startContinuous(10);
+  sensorR.startContinuous(10);
+  //sensorL2.startContinuous(10);
+  //sensorR2.startContinuous(10);
+}
+/*
+void setupGyro ()
+{
+  Wire.begin();
+  Wire.setClock(40000);
+  Wire.beginTransmission(MPU); // Essentiell för gyro börjar här.
+  Wire.write(0x6B); 
+  Wire.write(0);    
+  Wire.endTransmission(true); //Essentiell för gyro slutar här.
+}
+*/
+void setupPID ()
+{
+  steerServoPID.SetSampleTime(15);
+  steerServoPID.SetMode(AUTOMATIC);
+  steerServoPID.SetOutputLimits (-45, 50);
+}
+/*
+byte readGyro ()
+{
+  Wire.beginTransmission(MPU);
+  Wire.write(0x3B);  
+  Wire.endTransmission(false);
+  Wire.requestFrom(MPU,12,true);  
+  GyX=Wire.read()<<8|Wire.read();  
+  GyY=Wire.read()<<8|Wire.read();  
+  GyZ=Wire.read()<<8|Wire.read();  
+  if (climbing == 0 && GyX > 1000) climbing = 1;
+  else climbing = 0;
+  
+  if (climbing) climbspeed = 255;
+  else climbspeed = 0;
+  
+  return climbspeed;
+}
+*/
+void reverse(int distForward)
+{
+    word distRight = sensorL.read();
+    word distLeft = sensorR.read();
+    while (distForward < 300)
+    {
+      distForward = sensorF.read();
+      speed = map (distForward, 0, 300, 130, 220);
+      motorSet (speed, 1, 0);
+      int ServoValue = 90;
+      if (distRight > distLeft) ServoValue = 120;
+      else if (distRight < distLeft) ServoValue = 60;
+      
+      servo.write (ServoValue);
+    }//while
+}
+
+void printPIDValues (int leftAng, int rightAng, int leftStr, int rightStr, int InputPID, int OutputPID)
+{
+  Serial.println("Left: ");
+  Serial.println(leftAng);
+  Serial.println("Right: ");
+  Serial.println(rightAng);
+  Serial.println("Left 2: ");
+  Serial.println(leftStr);
+  Serial.println("Right 2: ");
+  Serial.println(rightStr);
+  Serial.println("Input: ");
+  Serial.println(InputPID); 
+  Serial.println("Output:");
+  Serial.println(OutputPID);
+  Serial.println("Servo value: ");
+  Serial.println(90+OutputPID);
+}
