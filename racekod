@@ -1,0 +1,136 @@
+
+#include <Arduino.h>
+#include <Servo.h>   // Bibliotek för servo
+#include <VL53L1X.h> //Bibliotek för sensorerna
+#include <Wire.h>    // Bibliotek för I2C
+
+/*********************** PINS ***********************/
+#define MOTORDIRECTION 12  //Pin för motors riktning 1 = fram 0 = back
+#define MOTORDIRECTION1 13 //Pin för motors riktning 1 = fram 0 = back
+#define MOTORSPEED 3       //Pin för att sätta hastighet 0-255
+#define SERVO 6            // Pin för servo
+#define SENSORLEFT 2       // Shut för vänster(vinklad) sensor
+#define SENSORRIGHT 7      // Shut för sensor höger (vinklad)
+#define SENSORFORWARD 4    //Shut för sensor rakt fram
+
+#define START 8 // Startmodul
+
+/******************* SENSORER ************************/
+VL53L1X sensorF;
+VL53L1X sensorL;
+VL53L1X sensorR;
+/*********************** FUNKTIONER ***********************/
+void motorSet(byte speed, byte direction, byte direction1);
+void setupSensors();
+void reverse(int distForward);
+
+/*********************** VARIABLER ***********************/
+byte start = 0;  // Logikvärde för startmodul
+int speed = 0;   // PWM-hastighet 0-255
+int distForward; //Avstånd rakt fram
+int leftAng;     //Avstånd sensor vänster (vinklad)
+int rightAng;    //Avstånd sensor höger (vinklad)
+int diff;        // Differensvärde avstånd höger - vänster
+Servo servo;     //Skapar ett servo-objekt
+
+int angle;
+
+void steering(int leftAng, int rightAng)
+{
+  int16_t diff = leftAng - rightAng;
+  angle = map(diff, -1000, 1000, 0, 200);
+  /*
+  if (angle > 160)
+  {
+    angle = 160;
+  }
+  if (angle < 20)
+  {
+    angle = 20;
+  }
+  */
+  servo.write(angle);
+}
+
+/*********************** HUVUDPROGRAM SETUP ***********************/
+void setup()
+{
+  pinMode(MOTORDIRECTION, OUTPUT);
+  pinMode(MOTORDIRECTION1, OUTPUT);
+
+  servo.attach(SERVO);
+  pinMode(START, INPUT);
+  setupSensors();
+  //Serial.begin (9600);
+}
+
+/*********************** HUVUDPROGRAM LOOP ***********************/
+void loop()
+{
+
+  start = digitalRead(START);
+  /* START */
+
+  while (start)
+  {
+    start = digitalRead(START);
+
+    distForward = sensorF.read();
+    if (distForward > 1200)
+      distForward = 500;
+    speed = map(distForward, 0, 400, 50, 400);
+    motorSet(speed, 1, 0);
+
+    leftAng = sensorR.read() * 0.4;
+    rightAng = sensorL.read() * 0.4;
+
+    steering(leftAng, rightAng);
+
+
+  }
+  /* STOPP */
+
+  servo.write(110);
+  motorSet(0, 0, 0);
+}
+
+void motorSet(byte speed, byte direction, byte direction1)
+{
+  digitalWrite(MOTORDIRECTION, direction);   //LOW för att köra framåt, HIGH för att backa
+  digitalWrite(MOTORDIRECTION1, direction1); //LOW för att köra framåt, HIGH för att backa
+  analogWrite(MOTORSPEED, 120);              //Sätter hastighet på Channel A
+}
+
+void setupSensors()
+{
+  pinMode(SENSORFORWARD, OUTPUT);
+  pinMode(SENSORLEFT, OUTPUT);
+  pinMode(SENSORRIGHT, OUTPUT);
+
+  digitalWrite(SENSORFORWARD, LOW);
+  digitalWrite(SENSORLEFT, LOW);
+  digitalWrite(SENSORRIGHT, LOW);
+
+  pinMode(SENSORFORWARD, INPUT);
+  sensorF.init(true);
+  sensorF.setAddress((uint8_t)1);
+
+  pinMode(SENSORLEFT, INPUT);
+  sensorL.init(true);
+  sensorL.setAddress((uint8_t)2);
+
+  pinMode(SENSORRIGHT, INPUT);
+  sensorR.init(true);
+  sensorR.setAddress((uint8_t)3);
+
+  sensorF.setDistanceMode(VL53L1X::Long);
+  sensorF.setMeasurementTimingBudget(13);
+  sensorL.setDistanceMode(VL53L1X::Long);
+  sensorL.setMeasurementTimingBudget(13);
+  sensorR.setDistanceMode(VL53L1X::Long);
+  sensorR.setMeasurementTimingBudget(13);
+
+  sensorF.startContinuous(10);
+  sensorL.startContinuous(10);
+  sensorR.startContinuous(10);
+}
